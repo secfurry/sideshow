@@ -1,0 +1,23 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "rust-analyzer.cargo.target": "thumbv6m-none-eabi",
+        "rust-analyzer.checkOnSave": true,
+        "rust-analyzer.checkOnSave.allTargets": false,
+        "editor.formatOnSave": true,
+        "cSpell.words": [
+            "gpio",
+            "mkdirs",
+            "pico",
+            "ROSC",
+            "rpsp",
+            "Uart",
+            "XOSC",
+            "XSOC"
+        ]
+    }
+}
