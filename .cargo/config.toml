@@ -5,12 +5,9 @@ rustflags  = [
   "-C",   "linker=flip-link",
   "-C",   "link-arg=--nmagic",
   "-C",   "link-arg=-Tlink.x",
-  # "-C", "link-arg=-Tdefmt.x",
   "-Z",   "trap-unreachable=no",
   "-C",   "no-vectorize-loops",
   # "-Z", "mir-opt-level=4",
-  # "-C", "llvm-args=-print-after-all",
-  # "-Z", "unpretty=mir-cfg",
 ]
 
 [build]

@@ -50,10 +50,10 @@ The button configuration can be changed but supports the following button action
 
 - __Lock__: Prevent the current "badge" from being changed automatically. This will
   change the background but not the "badge". When this action is used, the top
-  LEDs (Action and Network) will display the new Lock state.
+  LEDs (Action and Network) will display the new Lock state. It's a toggle button
+  to switch the Lock state.
   - Action On, Network Off: Lock is Disabled.
   - Action Off, Network On: Lock is Enabled.
-  It's a toggle button to switch the Lock state.
 - __Random__: Select a random "badge" and background and display it. This will
   override the Lock value and disable it. The "current display" count will be set
   to the current "badge" position.
@@ -144,17 +144,18 @@ The cargo configuration should contain all the values needed to compile in the
 sure you have the `flip-link` linker installed before compiling. To do this, use
 the command `cargo install flip-link` to install it.
 
-If a Pico debug probe is avaliable (or you can setup one
+If a Pico debug probe is avaliable (or you can setup one,
 [see here](https://mcuoneclipse.com/2022/09/17/picoprobe-using-the-raspberry-pi-pico-as-debug-probe/)),
 installing `probe-rs` using `cargo install probe-rs-tools` will allow for direct
 flashing of the firmware when the probe is connected to the SideShow device when
 `cargo run` is called.
 
 If you don't have a debug probe avaliable, you can convert the compiled ELF into
-a U2F file using `elf2uf2-rs` and can be loaded using the Bootloader mode of the
-Pico (hold down the "Boot" button when plugging the device in to expose the flash
-storage) by copying the generated file over to flash. _Make sure to comment out_
-_the first two lines of `.cargo/config.toml` to avoid any compilation errors._
+a U2F file using `elf2uf2-rs` (`cargo install elf2uf2-rs`) and can be loaded using
+the Bootloader mode of the Pico (hold down the "Boot" button when plugging the
+device in to expose the flash storage) by copying the generated file over to flash.
+_Make sure to comment out the first two lines of `.cargo/config.toml` to avoid any_
+_compilation errors._
 
 ### Case
 
