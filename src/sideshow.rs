@@ -185,12 +185,12 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
         }
         let n = cur & 0x7F;
         let k = match act {
-            _ if cur & 0x80 != 0 => n,                     // All stay the same when the lock is enabled.
-            Action::Next | Action::Wake if n >= 0x7F => 0, // Wrap and reset.
-            Action::Next | Action::Wake => n + 1,          // Advance the count.
-            Action::Prev if n == 0 => 0x7F,                // Reset to the max.
-            Action::Prev => n - 1,                         // Reduce the count.
-            _ => unreachable!(),                           // Can't happen.
+            _ if cur & 0x80 != 0 => n,                          // All stay the same when the lock is enabled.
+            Action::Next | Action::Wake if n >= 0x7F => 0,      // Wrap and reset.
+            Action::Next | Action::Wake => n.saturating_add(1), // Advance the count.
+            Action::Prev if n == 0 => 0x7F,                     // Reset to the max.
+            Action::Prev => n.saturating_sub(1),                // Reduce the count.
+            _ => unreachable!(),                                // Can't happen.
         };
         let i = {
             let d = self.root.dir_open(DIR_BADGES).map_err(|_| SideError::LoadFail)?;
