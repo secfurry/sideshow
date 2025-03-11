@@ -173,4 +173,7 @@ The current code configuration is support for the InkyFrame 4. With a couple of
 code and configuration changes, it can work on different devices or larger screen
 sizes.
 
+_The inky5 feature was added to use the "static_large" feature for the larger_
+_screen, if using the InkyFrame 5, it's recommended to enable that feature._
+
 See the [InkyFrame](https://github.com/secfurry/inky-frame) repository for compatibility.

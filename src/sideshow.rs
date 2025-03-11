@@ -30,6 +30,7 @@ use core::result::Result::{self, Ok};
 use core::unreachable;
 
 use inky_frame::InkyBoard;
+use inky_frame::frame::heaped::Static;
 use inky_frame::frame::tga::TgaParser;
 use inky_frame::frame::{Inky, InkyPins, InkyRotation};
 use inky_frame::fs::{BlockDevice, Mode, Volume};
@@ -75,7 +76,7 @@ pub enum SideError {
 }
 
 pub struct SideShow<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> {
-    inky:  Inky<'a, B, W, H>,
+    inky:  Inky<'a, B, W, H, Static<B>>,
     root:  &'a Volume<'a, D>,
     rand:  Rand,
     board: &'a InkyBoard<'a>,
@@ -101,7 +102,7 @@ impl<'a, D: BlockDevice> SideShowInky4<'a, D> {
     }
 }
 impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a, B, W, H, D> {
-    #[inline]
+    #[inline(always)]
     pub fn create(b: &'a InkyBoard<'a>, root: &'a Volume<'a, D>, pins: InkyPins, r: impl Into<InkyRotation>) -> Result<SideShow<'a, B, W, H, D>, SideError> {
         let mut i = Inky::new(b, b.spi_bus(), pins).map_err(|_| SideError::InvalidPins)?;
         i.set_rotation(r.into());
@@ -204,16 +205,22 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
                 .peekable();
             let mut i = 0u8;
             // Use a loop so we can pull back to make sure we catch the end value.
-            let mut f = loop {
-                let e = v.next().ok_or(SideError::LoadFail)?.map_err(|_| SideError::LoadFail)?;
-                // If the next one is None, that means we're at the end.
-                if i == k || v.peek().is_none() || i >= 0x7F {
-                    break e;
+            let mut f = unsafe {
+                loop {
+                    let e = v.next().ok_or(SideError::LoadFail)?.map_err(|_| SideError::LoadFail)?;
+                    // If the next one is None, that means we're at the end.
+                    if i == k || v.peek().is_none() || i >= 0x7F {
+                        break e;
+                    }
+                    i = i.saturating_add(1);
                 }
-                i = i.saturating_add(1);
-            }
-            .into_file(&self.root, Mode::READ)
-            .map_err(|_| SideError::LoadFail)?;
+                .into_file(&self.root, Mode::READ)
+                .map_err(|_| SideError::LoadFail)?
+                .into_reader()
+                .unwrap_unchecked()
+                // SAFETY: If opened with 'Mode::READ', 'into_reader' never
+                // fails.
+            };
             self.inky
                 .set_with(|x| x.set_image(0, 0, TgaParser::new(&mut f)?))
                 .map_err(|_| SideError::LoadFail)?;
@@ -230,17 +237,22 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
         l.reset(&d).map_err(|_| SideError::LoadFail)?;
         let i = self.rand.rand_u32n(n as u32) as usize;
         let e = l
-            .into_iter()
+            .into_iter_mut()
             .filter(|e| e.as_ref().is_ok_and(|v| v.is_file()))
             .nth(i)
             .map(|v| v.ok())
             .flatten();
-        let mut f = match e {
-            Some(v) => v,
-            None => return Ok(i),
-        }
-        .into_file(&self.root, Mode::READ)
-        .map_err(|_| SideError::LoadFail)?;
+        let mut f = unsafe {
+            match e {
+                Some(v) => v,
+                None => return Ok(i),
+            }
+            .into_file(&self.root, Mode::READ)
+            .map_err(|_| SideError::LoadFail)?
+            .into_reader()
+            .unwrap_unchecked()
+            // SAFETY: If opened with 'Mode::READ', 'into_reader' never fails.
+        };
         self.inky
             .set_with(|x| x.set_image(0, 0, TgaParser::new(&mut f)?))
             .map_err(|_| SideError::LoadFail)?;
@@ -335,6 +347,9 @@ pub fn sideshow_inky4(r: impl Into<InkyRotation>) -> ! {
     let b = InkyBoard::get();
     let d = b.sd_card();
     let v = d.root().unwrap_or_else(|_| sideshow_error(SideError::InvalidRoot));
+    // Signal an issue if we crash after here.
+    b.leds().a.on();
+    b.leds().e.on();
     SideShowInky4::new(&b, &v, r)
         .and_then(|mut x| x.run())
         .unwrap_or_else(sideshow_error)
