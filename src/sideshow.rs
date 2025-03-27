@@ -23,6 +23,7 @@ extern crate core;
 extern crate inky_frame;
 extern crate rpsp;
 
+use core::clone::Clone;
 use core::convert::Into;
 use core::iter::{IntoIterator, Iterator};
 use core::option::Option::{None, Some};
@@ -67,12 +68,13 @@ const BUTTON_D: Action = Action::Prev;
 const BUTTON_E: Action = Action::Next;
 // =================== [ Configuration End ] ===================
 
+#[derive(Clone)]
 pub enum SideError {
-    ByteFail,
-    LoadFail,
-    WakeFail,
-    InvalidPins,
-    InvalidRoot,
+    ByteFail,    // (No LEDs)
+    LoadFail,    // A        
+    WakeFail,    //   B      
+    InvalidPins, // A B      
+    InvalidRoot, //     C    
 }
 
 pub struct SideShow<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> {
@@ -326,13 +328,23 @@ pub fn sideshow_error(e: SideError) -> ! {
     let i = InkyBoard::get();
     let l = i.leds();
     l.all_off();
-    match e {
-        SideError::ByteFail => l.a.on(),
-        SideError::LoadFail => l.b.on(),
-        SideError::WakeFail => l.c.on(),
-        SideError::InvalidPins => l.d.on(),
-        SideError::InvalidRoot => l.e.on(),
+
+    if e.clone() as u8 & 1 == 1 {
+        l.a.on();
     }
+    if e.clone() as u8 & 2 == 2 {
+        l.b.on();
+    }
+    if e.clone() as u8 & 4 == 4 {
+        l.c.on();
+    }
+    if e.clone() as u8 & 8 == 8 {
+        l.d.on();
+    }
+    if e.clone() as u8 & 16 == 16 {
+        l.d.on();
+    }
+
     loop {
         i.sleep(1_500);
         l.network.on();
