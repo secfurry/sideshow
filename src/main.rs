@@ -33,7 +33,7 @@ fn main() -> ! {
     // - 1: Rotate90  (Buttons on Left)
     // - 2: Rotate180 (Buttons on Bottom, Default)
     // - 3: Rotate270 (Buttons on Right)
-    sideshow::sideshow_inky4(0x2u8)
+    sideshow::sideshow(0x2u8)
 }
 
 #[panic_handler]

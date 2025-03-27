@@ -82,7 +82,11 @@ pub struct SideShow<'a, const B: usize, const W: u16, const H: u16, D: BlockDevi
     board: &'a InkyBoard<'a>,
 }
 
-pub type SideShowInky4<'a, D> = SideShow<'a, 128_000, 640u16, 400u16, D>;
+#[cfg(not(feature = "inky5"))]
+pub type SideShowInky<'a, D> = SideShow<'a, 128_000, 640u16, 400u16, D>;
+
+#[cfg(feature = "inky5")]
+pub type SideShowInky<'a, D> = SideShow<'a, 134_400, 600u16, 448u16, D>;
 
 enum Action {
     None,
@@ -95,12 +99,13 @@ enum Action {
     // Custom,
 }
 
-impl<'a, D: BlockDevice> SideShowInky4<'a, D> {
+impl<'a, D: BlockDevice> SideShowInky<'a, D> {
     #[inline(always)]
-    pub fn new(b: &'a InkyBoard<'a>, root: &'a Volume<'a, D>, r: impl Into<InkyRotation>) -> Result<SideShowInky4<'a, D>, SideError> {
-        SideShowInky4::create(b, root, InkyPins::inky_frame4(), r)
+    pub fn new(b: &'a InkyBoard<'a>, root: &'a Volume<'a, D>, r: impl Into<InkyRotation>) -> Result<SideShowInky<'a, D>, SideError> {
+        SideShowInky::create(b, root, InkyPins::inky_frame4(), r)
     }
 }
+
 impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a, B, W, H, D> {
     #[inline(always)]
     pub fn create(b: &'a InkyBoard<'a>, root: &'a Volume<'a, D>, pins: InkyPins, r: impl Into<InkyRotation>) -> Result<SideShow<'a, B, W, H, D>, SideError> {
@@ -342,15 +347,16 @@ pub fn sideshow_error(e: SideError) -> ! {
         l.activity.on();
     }
 }
+
 #[inline(always)]
-pub fn sideshow_inky4(r: impl Into<InkyRotation>) -> ! {
+pub fn sideshow(r: impl Into<InkyRotation>) -> ! {
     let b = InkyBoard::get();
     let d = b.sd_card();
     let v = d.root().unwrap_or_else(|_| sideshow_error(SideError::InvalidRoot));
     // Signal an issue if we crash after here.
     b.leds().a.on();
     b.leds().e.on();
-    SideShowInky4::new(&b, &v, r)
+    SideShowInky::new(&b, &v, r)
         .and_then(|mut x| x.run())
         .unwrap_or_else(sideshow_error)
 }
