@@ -34,7 +34,7 @@ use inky_frame::InkyBoard;
 use inky_frame::frame::heaped::Static;
 use inky_frame::frame::tga::TgaParser;
 use inky_frame::frame::{Inky, InkyPins, InkyRotation};
-use inky_frame::fs::{BlockDevice, Mode, Volume};
+use inky_frame::fs::{BlockDevice, Mode, Volume, DeviceError};
 use inky_frame::hw::{Button, Buttons, Leds};
 use rpsp::MayFail;
 use rpsp::rand::Rand;
@@ -70,11 +70,20 @@ const BUTTON_E: Action = Action::Next;
 
 #[derive(Clone)]
 pub enum SideError {
-    ByteFail,    // (No LEDs)
-    LoadFail,    // A        
-    WakeFail,    //   B      
-    InvalidPins, // A B      
-    InvalidRoot, //     C    
+    ByteFail,              // (No LEDs)
+    LoadFail,              // A        
+    WakeFail,              //   B      
+    InvalidPins,           // A B      
+    InvalidRoot,           //     C    
+    BadgeDirFail,          // A   C    
+    BadgeFileFail,         //   B C    
+    BadgeParseFail,        // A B C    
+    ImageDirOpenFail,      //       D  
+    ImageDirListFail,      // A     D  
+    ImageFileFail,         //   B   D  
+    ImageParseFail,        // A B   D  
+    ImageDirNotAFileError, //     C D  
+    ImageDirNotFoundError, // A   C D  
 }
 
 pub struct SideShow<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> {
@@ -196,12 +205,12 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
             _ => unreachable!(),                                // Can't happen.
         };
         let i = {
-            let d = self.root.dir_open(DIR_BADGES).map_err(|_| SideError::LoadFail)?;
+            let d = self.root.dir_open(DIR_BADGES).map_err(|_| SideError::BadgeDirFail)?;
             // Use the 'peekable' iter so we can check if the number goes out of
             // bounds so we can fix the max.
             let mut v = d
                 .list()
-                .map_err(|_| SideError::LoadFail)?
+                .map_err(|_| SideError::BadgeDirFail)?
                 .into_iter()
                 .filter(|e| e.as_ref().is_ok_and(|v| v.is_file()))
                 .peekable();
@@ -209,7 +218,7 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
             // Use a loop so we can pull back to make sure we catch the end value.
             let mut f = unsafe {
                 loop {
-                    let e = v.next().ok_or(SideError::LoadFail)?.map_err(|_| SideError::LoadFail)?;
+                    let e = v.next().ok_or(SideError::BadgeFileFail)?.map_err(|_| SideError::BadgeFileFail)?;
                     // If the next one is None, that means we're at the end.
                     if i == k || v.peek().is_none() || i >= 0x7F {
                         break e;
@@ -217,7 +226,7 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
                     i = i.saturating_add(1);
                 }
                 .into_file(&self.root, Mode::READ)
-                .map_err(|_| SideError::LoadFail)?
+                .map_err(|_| SideError::BadgeFileFail)?
                 .into_reader()
                 .unwrap_unchecked()
                 // SAFETY: If opened with 'Mode::READ', 'into_reader' never
@@ -225,7 +234,7 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
             };
             self.inky
                 .set_with(|x| x.set_image(0, 0, TgaParser::new(&mut f)?))
-                .map_err(|_| SideError::LoadFail)?;
+                .map_err(|_| SideError::BadgeParseFail)?;
             // If 'i' is less than 'k', that means we hit the limit of the reads
             // so we should set the value to the max for a reset.
             if i < k || v.peek().is_none() { 0x7F } else { i }
@@ -233,8 +242,14 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
         Ok((cur & 0x80) | i)
     }
     fn random_set_image(&mut self, dir: &str) -> Result<usize, SideError> {
-        let d = self.root.dir_open(dir).map_err(|_| SideError::LoadFail)?;
-        let mut l = d.list().map_err(|_| SideError::LoadFail)?;
+        let d = self.root.dir_open(dir).map_err(|error| {
+            match error {
+                DeviceError::NotAFile => SideError::ImageDirNotAFileError,
+                DeviceError::NotFound => SideError::ImageDirNotFoundError,
+                _ => SideError::ImageDirOpenFail,
+            }
+        })?;
+        let mut l = d.list().map_err(|_| SideError::ImageDirListFail)?;
         let n = l.into_iter_mut().filter(|e| e.as_ref().is_ok_and(|v| v.is_file())).count();
         l.reset(&d).map_err(|_| SideError::LoadFail)?;
         let i = self.rand.rand_u32n(n as u32) as usize;
@@ -250,14 +265,14 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
                 None => return Ok(i),
             }
             .into_file(&self.root, Mode::READ)
-            .map_err(|_| SideError::LoadFail)?
+            .map_err(|_| SideError::ImageFileFail)?
             .into_reader()
             .unwrap_unchecked()
             // SAFETY: If opened with 'Mode::READ', 'into_reader' never fails.
         };
         self.inky
             .set_with(|x| x.set_image(0, 0, TgaParser::new(&mut f)?))
-            .map_err(|_| SideError::LoadFail)?;
+            .map_err(|_| SideError::ImageParseFail)?;
         Ok(i)
     }
     #[inline]
