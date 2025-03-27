@@ -83,17 +83,15 @@ If SideShow encounters an error, it will switch to an error state and will requi
 to be power-cycled to clear it.
 
 Error states are indicated by the Activity and Network LEDs flashing back-and-forth
-every second with one of the button LEDs enabled.
+every second. Which button LEDs are lit up indicate the type of error that occurred.
 
-The button LED indicates the type of error that occurred.
-
-- A: __ByteFail__: Operations on the PCF stored byte failed.
-- B: __LoadFail__: Image processing operation failed. This is usually due to a badly
+- None: __ByteFail__: Operations on the PCF stored byte failed.
+- A: __LoadFail__: Image processing operation failed. This is usually due to a badly
      formatted, corrupted file or non-TGA image.
-- C: __WakeFail__: Operations on the PCF wake alarm and interrupts failed.
-- D: __InvalidPins__: Setup for the eInk display was not correct. Usually this error
+- B: __WakeFail__: Operations on the PCF wake alarm and interrupts failed.
+- A & B: __InvalidPins__: Setup for the eInk display was not correct. Usually this error
      is due to a configuration/code error.
-- E: __InvalidRoot__: Operations on the SD Card (non-image related) failed. This is
+- C: __InvalidRoot__: Operations on the SD Card (non-image related) failed. This is
      usually due to an error with the SD Card or it's formatting. Sometimes it
      will be a fluke issue, but may require re-formatting the SD Card if the error
      occurs multiple times in a row.
