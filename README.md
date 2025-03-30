@@ -41,8 +41,8 @@ This selection process allows for randomized backgrounds for every "badge" displ
 NOTE: SideShow will only read TGA-type image files. You can use `imagmagick` to
 convert them easily using `convert src.jpg dst.tga`
 
-It's also recommended that the images are the size of the eInk display (640x400 for InkyFrame4)
-as SideShow will draw them at (0, 0) directly.
+It's also recommended that the images are the size of the eInk display (640x400 for
+InkyFrame4, 600x448 for InkyFrame5) as SideShow will draw them at (0, 0) directly.
 
 ### Buttons
 
@@ -171,7 +171,7 @@ The current code configuration is support for the InkyFrame 4. With a couple of
 code and configuration changes, it can work on different devices or larger screen
 sizes.
 
-_The inky5 feature was added to use the "static_large" feature for the larger_
-_screen, if using the InkyFrame 5, it's recommended to enable that feature._
+If using an InkyFrame5, build with the "inky5" feature. This will also use the
+"static_large" feature for the larger screen.
 
 See the [InkyFrame](https://github.com/secfurry/inky-frame) repository for compatibility.
