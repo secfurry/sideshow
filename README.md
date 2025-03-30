@@ -133,7 +133,7 @@ The table mapping of the LEDs to the errors is listed below.
 
 #### Error Mapping Table
 
-To didplay the error codes, the button LEDs will light up to display a 5-bit binary
+To display the error codes, the button LEDs will light up to display a 5-bit binary
 number. _(A = 16, B = 8, C = 4, D = 2, E = 1)_.
 
 | Error                   | Number Value | LED Indicator |
