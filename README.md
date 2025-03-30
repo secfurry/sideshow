@@ -20,17 +20,17 @@ The display update process follows the following routes:
 
 - Increase the "current display" count (held in PCF memory) by `1`.
   - If the "current display" count is `>= 127`, reset it to `0`.
-- Open the "/backgrounds" (changable by configuration) directory on the SD Card.
+- Open the `/backgrounds` directory _(changable by configuration)_ on the SD Card.
   - Get the current file count in this directory
   - Choose a random image from this directory and write it's parsed contents to
-    the eInk display.
-- Open the "/badges" (changable by configuration) directory on the SD Card,
-  - Iterate through the files in the directory until one of the conditions are met.
+    the eInk display buffer.
+- Open the `/badges` directory _(changable by configuration)_ on the SD Card,
+  - Iterate through the files in the directory until one of the following conditions are met.
     - File count equals the "current display" count.
     - File is the last file in the directory.
   - If the file was the last entry, the "current display" count will be set to `127`.
-  - Write the selected image's parsed contents to the eInk display.
-- Update the display
+  - Write the selected image's parsed contents to the eInk display buffer.
+- Update the eInk display.
 
 The dual background and "badge" images work on the concept that TGA images allow
 for transparency, which is supported by our TGA parser. Transparent pixels will
@@ -48,32 +48,32 @@ InkyFrame4, 600x448 for InkyFrame5) as SideShow will draw them at (0, 0) directl
 
 The button configuration can be changed but supports the following button actions:
 
-- __Lock__: Prevent the current "badge" from being changed automatically. This will
-  change the background but not the "badge". When this action is used, the top
+- __Lock__: Prevent the current "Badge" from being changed automatically. This will
+  change the background but not the "Badge". When this action is used, the top
   LEDs (Action and Network) will display the new Lock state. It's a toggle button
   to switch the Lock state.
-  - Action On, Network Off: Lock is Disabled.
-  - Action Off, Network On: Lock is Enabled.
-- __Random__: Select a random "badge" and background and display it. This will
+  - Action __On__, Network __Off__: Lock is Disabled.
+  - Action __Off__, Network __On__: Lock is Enabled.
+- __Random__: Select a random "Badge" and background and display it. This will
   override the Lock value and disable it. The "current display" count will be set
-  to the current "badge" position.
-- __Previous__: Select the previous "badge" and display it. The "current display"
-  count will be set to the current "badge" position (`-1`). This button __does not__
-  override the Lock, if set. If the current "badge" is the first entry (`0`), the
+  to the current "Badge" position.
+- __Previous__: Select the previous "Badge" and display it. The "current display"
+  count will be set to the current "Badge" position (`-1`). This button __does not__
+  override the Lock, if set. If the current "Badge" is the first entry (`0`), the
   "current display" value will be set to `127`, which wraps around the selection.
-- __Next__: Select the next "badge" and display it. The "current display"
-  count will be set to the current "badge" position (`+1`). This button __does not__
-  override the Lock, if set. If the current "badge" is the last entry, the
+- __Next__: Select the next "Badge" and display it. The "current display"
+  count will be set to the current "Badge" position (`+1`). This button __does not__
+  override the Lock, if set. If the current "Badge" is the last entry, the
   "current display" value will be set to `0`, which wraps around the selection.
 - __Custom__: TODO.
 
 The default button configuration is:
 
-- A: Nothing
-- B: Lock
-- C: Random
-- D: Previous
-- E: Next
+- __A__: Nothing
+- __B__: Lock
+- __C__: Random
+- __D__: Previous
+- __E__: Next
 
 When a button is pressed, it's LED will light up indicating the pressed selection.
 
@@ -85,16 +85,87 @@ to be power-cycled to clear it.
 Error states are indicated by the Activity and Network LEDs flashing back-and-forth
 every second. Which button LEDs are lit up indicate the type of error that occurred.
 
-- None: __ByteFail__: Operations on the PCF stored byte failed.
-- A: __LoadFail__: Image processing operation failed. This is usually due to a badly
-     formatted, corrupted file or non-TGA image.
-- B: __WakeFail__: Operations on the PCF wake alarm and interrupts failed.
-- A & B: __InvalidPins__: Setup for the eInk display was not correct. Usually this error
+The work by [@ticky](https://github.com/ticky) has allowed for expansion of the
+error types for better debugging. The resulting error code will be in 5-bit binary.
+The table mapping of the LEDs to the errors is listed below.
+
+#### Error Descriptions
+
+- __Byte__: Operations on the PCF stored byte failed.
+- __Wake__: Operations on the PCF wake alarm and interrupts failed.
+- __InvalidPins__: Setup for the eInk display was not correct. Usually this error
      is due to a configuration/code error.
-- C: __InvalidRoot__: Operations on the SD Card (non-image related) failed. This is
+- __InvalidRoot__: Operations on the SD Card (non-image related) failed. This is
      usually due to an error with the SD Card or it's formatting. Sometimes it
      will be a fluke issue, but may require re-formatting the SD Card if the error
      occurs multiple times in a row.
+- __Badge/DirOpen__: Generic error occurred when trying to open the Badge directory.
+- __Badge/DirNotFound__: The Badge directory could not be found.
+- __Badge/DirNotADir__: The Badge directory was found, but it's type was not a directory.
+- __Badge/DirList__: Reading the Badge directory listing failed.
+- __Badge/DirListReset__: Resetting and re-reading the Badge directory listing failed.
+- __Badge/DirIter__: Walking through the Badge directory listing failed.
+- __Badge/FileOpen__: Opening the selected Badge file failed. (Before Parsing).
+- __Badge/ImageIo__: Reading the selected Badge file failed. (During Parsing, but
+     not format related).
+- __Badge/ImageType__: The selected Badge image type was not a valid TGA file.
+- __Badge/ImageRead__: Generic parsing/reading error occurred when reading the selected
+     Badge file.
+- __Badge/ImageParse__: The selected Badge image could not be parsed due to improperly
+     returned TGA data. (Corrupted or badly formatted file?).
+- __Background/DirOpen__: Generic error occurred when trying to open the Background
+     directory.
+- __Background/DirNotFound__: The Background directory could not be found.
+- __Background/DirNotADir__: The Background directory was found, but it's type was
+     not a directory.
+- __Background/DirList__: Reading the Background directory listing failed.
+- __Background/DirListReset__: Resetting and re-reading the Background directory
+     listing failed.
+- __Background/DirIter__: Walking through the Background directory listing failed.
+- __Background/FileOpen__: Opening the selected Background file failed. (Before Parsing).
+- __Background/ImageIo__: Reading the selected Background file failed. (During Parsing,
+     but not format related).
+- __Background/ImageType__: The selected Background image type was not a valid TGA file.
+- __Background/ImageRead__: Generic parsing/reading error occurred when reading the selected
+     Background file.
+- __Background/ImageParse__: The selected Background image could not be parsed due to
+     improperly returned TGA data. (Corrupted or badly formatted file?).
+
+#### Error Mapping Table
+
+To didplay the error codes, the button LEDs will light up to display a 5-bit binary
+number. _(A = 16, B = 8, C = 4, D = 2, E = 1)_.
+
+| Error                   | Number Value | LED Indicator |
+| ----------------------- | ------------ | ------------- |
+| Byte                    |            0 |     [None]    |
+| Wake                    |            1 |           E   |
+| InvalidPins             |            2 |         D     |
+| InvalidRoot             |            3 |         D E   |
+| Badge/DirOpen           |            4 |       C       |
+| Badge/DirNotFound       |            5 |       C   E   |
+| Badge/DirNotADir        |            6 |       C D     |
+| Badge/DirList           |            7 |       C D E   |
+| Badge/DirListReset      |            8 |     B         |
+| Badge/DirIter           |            9 |     B     E   |
+| Badge/FileOpen          |           10 |     B   D     |
+| Badge/ImageIo           |           11 |     B   D E   |
+| Badge/ImageType         |           12 |     B C       |
+| Badge/ImageRead         |           13 |     B C   E   |
+| Badge/ImageParse        |           14 |     B C D     |
+| Background/DirOpen      |           16 |   A           |
+| Background/DirNotFound  |           17 |   A       E   |
+| Background/DirNotADir   |           18 |   A     D     |
+| Background/DirList      |           19 |   A     D E   |
+| Background/DirListReset |           20 |   A   C       |
+| Background/DirIter      |           21 |   A   C   E   |
+| Background/FileOpen     |           22 |   A   C D     |
+| Background/ImageIo      |           23 |   A   C D E   |
+| Background/ImageType    |           24 |   A B         |
+| Background/ImageRead    |           25 |   A B     E   |
+| Background/ImageParse   |           26 |   A B   D     |
+
+_Due to numbering, most Background related errors will have the "A" LED enabled._
 
 ## Configuration
 
@@ -175,3 +246,8 @@ If using an InkyFrame5, build with the "inky5" feature. This will also use the
 "static_large" feature for the larger screen.
 
 See the [InkyFrame](https://github.com/secfurry/inky-frame) repository for compatibility.
+
+## Bugs
+
+- Files named from MacOS are not correctly found by their name, even when correct.
+  _Thanks to [@ticky](https://github.com/ticky) for the finding__

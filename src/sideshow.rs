@@ -23,8 +23,7 @@ extern crate core;
 extern crate inky_frame;
 extern crate rpsp;
 
-use core::clone::Clone;
-use core::convert::Into;
+use core::convert::{From, Into};
 use core::iter::{IntoIterator, Iterator};
 use core::option::Option::{None, Some};
 use core::result::Result::{self, Ok};
@@ -32,9 +31,9 @@ use core::unreachable;
 
 use inky_frame::InkyBoard;
 use inky_frame::frame::heaped::Static;
-use inky_frame::frame::tga::TgaParser;
+use inky_frame::frame::tga::{ImageError, TgaParser};
 use inky_frame::frame::{Inky, InkyPins, InkyRotation};
-use inky_frame::fs::{BlockDevice, Mode, Volume};
+use inky_frame::fs::{BlockDevice, DeviceError, Mode, Volume};
 use inky_frame::hw::{Button, Buttons, Leds};
 use rpsp::MayFail;
 use rpsp::rand::Rand;
@@ -68,13 +67,42 @@ const BUTTON_D: Action = Action::Prev;
 const BUTTON_E: Action = Action::Next;
 // =================== [ Configuration End ] ===================
 
-#[derive(Clone)]
+#[repr(u8)]
 pub enum SideError {
-    ByteFail,    // (No LEDs)
-    LoadFail,    // A        
-    WakeFail,    //   B      
-    InvalidPins, // A B      
-    InvalidRoot, //     C    
+    Byte                   = 0x00u8,
+    Wake                   = 0x01u8,
+    InvalidPins            = 0x02u8,
+    InvalidRoot            = 0x03u8,
+    // NOTE(sf): If we encapsulated the LoadError inside this error (SideError),
+    //           the size of the enum would be 2b instead of 1b, which only needs
+    //           1b to be expressed.
+    //
+    //           This is more ugly, but it saves some space. *shrug*.
+    //
+    // Badge Errors
+    BadgeDirOpen           = 0x04u8,
+    BadgeDirNotFound       = 0x05u8,
+    BadgeDirNotADir        = 0x06u8,
+    BadgeDirList           = 0x07u8,
+    BadgeDirListReset      = 0x08u8,
+    BadgeDirIter           = 0x09u8,
+    BadgeFileOpen          = 0x0Au8,
+    BadgeImageIo           = 0x0Bu8,
+    BadgeImageType         = 0x0Cu8,
+    BadgeImageRead         = 0x0Du8,
+    BadgeImageParse        = 0x0Eu8,
+    // Background Errors
+    BackgroundDirOpen      = 0x10u8,
+    BackgroundDirNotFound  = 0x11u8,
+    BackgroundDirNotADir   = 0x12u8,
+    BackgroundDirList      = 0x13u8,
+    BackgroundDirListReset = 0x14u8,
+    BackgroundDirIter      = 0x15u8,
+    BackgroundFileOpen     = 0x16u8,
+    BackgroundImageIo      = 0x17u8,
+    BackgroundImageType    = 0x18u8,
+    BackgroundImageRead    = 0x19u8,
+    BackgroundImageParse   = 0x1Au8,
 }
 
 pub struct SideShow<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> {
@@ -84,11 +112,10 @@ pub struct SideShow<'a, const B: usize, const W: u16, const H: u16, D: BlockDevi
     board: &'a InkyBoard<'a>,
 }
 
-#[cfg(not(feature = "inky5"))]
-pub type SideShowInky<'a, D> = SideShow<'a, 128_000, 640u16, 400u16, D>;
-
 #[cfg(feature = "inky5")]
 pub type SideShowInky<'a, D> = SideShow<'a, 134_400, 600u16, 448u16, D>;
+#[cfg(not(feature = "inky5"))]
+pub type SideShowInky<'a, D> = SideShow<'a, 128_000, 640u16, 400u16, D>;
 
 enum Action {
     None,
@@ -100,14 +127,60 @@ enum Action {
     // TODO(sf): Custom Actions
     // Custom,
 }
+enum LoadError {
+    DirOpen,
+    DirNotFound,
+    DirNotADir,
+    DirList,
+    DirListReset,
+    DirIter,
+    FileOpen,
+    ImageIo,
+    ImageType,
+    ImageRead,
+    ImageParse,
+}
 
+impl SideError {
+    #[inline(always)]
+    fn badge(e: LoadError) -> SideError {
+        match e {
+            LoadError::DirOpen => SideError::BadgeDirOpen,
+            LoadError::DirNotFound => SideError::BadgeDirNotFound,
+            LoadError::DirNotADir => SideError::BadgeDirNotADir,
+            LoadError::DirList => SideError::BadgeDirList,
+            LoadError::DirListReset => SideError::BadgeDirListReset,
+            LoadError::DirIter => SideError::BadgeDirIter,
+            LoadError::FileOpen => SideError::BadgeFileOpen,
+            LoadError::ImageIo => SideError::BadgeImageIo,
+            LoadError::ImageType => SideError::BadgeImageType,
+            LoadError::ImageRead => SideError::BadgeImageRead,
+            LoadError::ImageParse => SideError::BadgeImageParse,
+        }
+    }
+    #[inline(always)]
+    fn background(e: LoadError) -> SideError {
+        match e {
+            LoadError::DirOpen => SideError::BackgroundDirOpen,
+            LoadError::DirNotFound => SideError::BackgroundDirNotFound,
+            LoadError::DirNotADir => SideError::BackgroundDirNotADir,
+            LoadError::DirList => SideError::BackgroundDirList,
+            LoadError::DirListReset => SideError::BackgroundDirListReset,
+            LoadError::DirIter => SideError::BackgroundDirIter,
+            LoadError::FileOpen => SideError::BackgroundFileOpen,
+            LoadError::ImageIo => SideError::BackgroundImageIo,
+            LoadError::ImageType => SideError::BackgroundImageType,
+            LoadError::ImageRead => SideError::BackgroundImageRead,
+            LoadError::ImageParse => SideError::BackgroundImageParse,
+        }
+    }
+}
 impl<'a, D: BlockDevice> SideShowInky<'a, D> {
     #[inline(always)]
     pub fn new(b: &'a InkyBoard<'a>, root: &'a Volume<'a, D>, r: impl Into<InkyRotation>) -> Result<SideShowInky<'a, D>, SideError> {
         SideShowInky::create(b, root, InkyPins::inky_frame4(), r)
     }
 }
-
 impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a, B, W, H, D> {
     #[inline(always)]
     pub fn create(b: &'a InkyBoard<'a>, root: &'a Volume<'a, D>, pins: InkyPins, r: impl Into<InkyRotation>) -> Result<SideShow<'a, B, W, H, D>, SideError> {
@@ -138,12 +211,12 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
             out!("Switch result n={n}, setting PFC byte..");
             //
             l.all_off();
-            self.board.pcf().set_byte(n).map_err(|_| SideError::ByteFail)?;
+            self.board.pcf().set_byte(n).map_err(|_| SideError::Byte)?;
             self.board.sleep(2_500);
             //
             out!("Setting PFC rtc_wake time..");
             //
-            let w = self.board.set_rtc_wake(SLEEP_TIME).map_err(|_| SideError::WakeFail)?;
+            let w = self.board.set_rtc_wake(SLEEP_TIME).map_err(|_| SideError::Wake)?;
             unsafe { self.board.power_off() };
             // Everything after this means we're on AC power.
             //
@@ -174,10 +247,10 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
     }
     #[inline(always)]
     fn background(&mut self) -> Result<(), SideError> {
-        self.random_set_image(DIR_BACKGROUNDS)?;
+        self.random_set_image(DIR_BACKGROUNDS).map_err(SideError::background)?;
         Ok(())
     }
-    fn badge(&mut self, act: Action, cur: u8) -> Result<u8, SideError> {
+    fn badge(&mut self, act: Action, cur: u8) -> Result<u8, LoadError> {
         match &act {
             Action::None => return Ok(cur), // Just in case.
             // Random: Override the Badge lock and set a random one. Set this
@@ -201,12 +274,12 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
             _ => unreachable!(),                                // Can't happen.
         };
         let i = {
-            let d = self.root.dir_open(DIR_BADGES).map_err(|_| SideError::LoadFail)?;
+            let d = self.root.dir_open(DIR_BADGES)?;
             // Use the 'peekable' iter so we can check if the number goes out of
             // bounds so we can fix the max.
             let mut v = d
                 .list()
-                .map_err(|_| SideError::LoadFail)?
+                .map_err(|_| LoadError::FileOpen)?
                 .into_iter()
                 .filter(|e| e.as_ref().is_ok_and(|v| v.is_file()))
                 .peekable();
@@ -214,7 +287,7 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
             // Use a loop so we can pull back to make sure we catch the end value.
             let mut f = unsafe {
                 loop {
-                    let e = v.next().ok_or(SideError::LoadFail)?.map_err(|_| SideError::LoadFail)?;
+                    let e = v.next().ok_or(LoadError::DirIter)?.map_err(|_| LoadError::DirIter)?;
                     // If the next one is None, that means we're at the end.
                     if i == k || v.peek().is_none() || i >= 0x7F {
                         break e;
@@ -222,26 +295,24 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
                     i = i.saturating_add(1);
                 }
                 .into_file(&self.root, Mode::READ)
-                .map_err(|_| SideError::LoadFail)?
+                .map_err(|_| LoadError::FileOpen)?
                 .into_reader()
                 .unwrap_unchecked()
                 // SAFETY: If opened with 'Mode::READ', 'into_reader' never
                 // fails.
             };
-            self.inky
-                .set_with(|x| x.set_image(0, 0, TgaParser::new(&mut f)?))
-                .map_err(|_| SideError::LoadFail)?;
+            self.inky.set_with(|x| x.set_image(0, 0, TgaParser::new(&mut f)?))?;
             // If 'i' is less than 'k', that means we hit the limit of the reads
             // so we should set the value to the max for a reset.
             if i < k || v.peek().is_none() { 0x7F } else { i }
         };
         Ok((cur & 0x80) | i)
     }
-    fn random_set_image(&mut self, dir: &str) -> Result<usize, SideError> {
-        let d = self.root.dir_open(dir).map_err(|_| SideError::LoadFail)?;
-        let mut l = d.list().map_err(|_| SideError::LoadFail)?;
+    fn random_set_image(&mut self, dir: &str) -> Result<usize, LoadError> {
+        let d = self.root.dir_open(dir)?;
+        let mut l = d.list().map_err(|_| LoadError::DirList)?;
         let n = l.into_iter_mut().filter(|e| e.as_ref().is_ok_and(|v| v.is_file())).count();
-        l.reset(&d).map_err(|_| SideError::LoadFail)?;
+        l.reset(&d).map_err(|_| LoadError::DirListReset)?;
         let i = self.rand.rand_u32n(n as u32) as usize;
         let e = l
             .into_iter_mut()
@@ -255,14 +326,12 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
                 None => return Ok(i),
             }
             .into_file(&self.root, Mode::READ)
-            .map_err(|_| SideError::LoadFail)?
+            .map_err(|_| LoadError::FileOpen)?
             .into_reader()
             .unwrap_unchecked()
             // SAFETY: If opened with 'Mode::READ', 'into_reader' never fails.
         };
-        self.inky
-            .set_with(|x| x.set_image(0, 0, TgaParser::new(&mut f)?))
-            .map_err(|_| SideError::LoadFail)?;
+        self.inky.set_with(|x| x.set_image(0, 0, TgaParser::new(&mut f)?))?;
         Ok(i)
     }
     #[inline]
@@ -321,10 +390,32 @@ impl<'a, const B: usize, const W: u16, const H: u16, D: BlockDevice> SideShow<'a
         }
         self.background()?;
         l.network.on();
-        let r = self.badge(a, sel)?;
+        let r = self.badge(a, sel).map_err(SideError::badge)?;
         l.activity.off();
         self.inky.update();
         Ok(r)
+    }
+}
+
+impl From<ImageError> for LoadError {
+    #[inline(always)]
+    fn from(v: ImageError) -> LoadError {
+        match v {
+            ImageError::Io(_) => LoadError::ImageIo,
+            ImageError::InvalidImage => LoadError::ImageParse,
+            ImageError::InvalidType(_) | ImageError::NotTGA => LoadError::ImageType,
+            _ => LoadError::ImageRead,
+        }
+    }
+}
+impl From<DeviceError> for LoadError {
+    #[inline(always)]
+    fn from(v: DeviceError) -> LoadError {
+        match v {
+            DeviceError::NotFound => LoadError::DirNotFound,
+            DeviceError::NotADirectory => LoadError::DirNotADir,
+            _ => LoadError::DirOpen,
+        }
     }
 }
 
@@ -333,23 +424,55 @@ pub fn sideshow_error(e: SideError) -> ! {
     let i = InkyBoard::get();
     let l = i.leds();
     l.all_off();
-
-    if e.clone() as u8 & 1 == 1 {
+    // Convert the error into a number that can be displayed with
+    // the LEDs.
+    //
+    let v = e as u8;
+    //
+    // | Error                   | Number Value | LED Indicator |
+    // | ----------------------- | ------------ | ------------- |
+    // | Byte                    |            0 |     [None]    |
+    // | Wake                    |            1 |           E   |
+    // | InvalidPins             |            2 |         D     |
+    // | InvalidRoot             |            3 |         D E   |
+    // | Badge/DirOpen           |            4 |       C       |
+    // | Badge/DirNotFound       |            5 |       C   E   |
+    // | Badge/DirNotADir        |            6 |       C D     |
+    // | Badge/DirList           |            7 |       C D E   |
+    // | Badge/DirListReset      |            8 |     B         |
+    // | Badge/DirIter           |            9 |     B     E   |
+    // | Badge/FileOpen          |           10 |     B   D     |
+    // | Badge/ImageIo           |           11 |     B   D E   |
+    // | Badge/ImageType         |           12 |     B C       |
+    // | Badge/ImageRead         |           13 |     B C   E   |
+    // | Badge/ImageParse        |           14 |     B C D     |
+    // | Background/DirOpen      |           16 |   A           |
+    // | Background/DirNotFound  |           17 |   A       E   |
+    // | Background/DirNotADir   |           18 |   A     D     |
+    // | Background/DirList      |           19 |   A     D E   |
+    // | Background/DirListReset |           20 |   A   C       |
+    // | Background/DirIter      |           21 |   A   C   E   |
+    // | Background/FileOpen     |           22 |   A   C D     |
+    // | Background/ImageIo      |           23 |   A   C D E   |
+    // | Background/ImageType    |           24 |   A B         |
+    // | Background/ImageRead    |           25 |   A B     E   |
+    // | Background/ImageParse   |           26 |   A B   D     |
+    //
+    if v & 0x1 == 0x1 {
         l.a.on();
     }
-    if e.clone() as u8 & 2 == 2 {
+    if v & 0x2 == 0x2 {
         l.b.on();
     }
-    if e.clone() as u8 & 4 == 4 {
+    if v & 0x4 == 0x4 {
         l.c.on();
     }
-    if e.clone() as u8 & 8 == 8 {
+    if v & 0x8 == 0x8 {
         l.d.on();
     }
-    if e.clone() as u8 & 16 == 16 {
+    if v & 0x10 == 0x10 {
         l.d.on();
     }
-
     loop {
         i.sleep(1_500);
         l.network.on();
@@ -359,7 +482,6 @@ pub fn sideshow_error(e: SideError) -> ! {
         l.activity.on();
     }
 }
-
 #[inline(always)]
 pub fn sideshow(r: impl Into<InkyRotation>) -> ! {
     let b = InkyBoard::get();
@@ -379,11 +501,13 @@ mod debug {
     extern crate rpsp;
 
     use core::cell::UnsafeCell;
-    use core::fmt::{Arguments, Write};
+    use core::fmt::{Arguments, Debug, Formatter, Result, Write};
     use core::marker::Sync;
     use core::option::Option::{self, None};
 
     use rpsp::uart::Uart;
+
+    use crate::sideshow::SideError;
 
     static DEBUG: DebugPort = DebugPort::empty();
 
@@ -398,6 +522,40 @@ mod debug {
         #[inline(always)]
         fn port(&self) -> &mut Uart {
             unsafe { &mut *self.0.get() }.get_or_insert_with(|| rpsp::uart_debug())
+        }
+    }
+
+    impl Debug for SideError {
+        #[inline]
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+            match self {
+                SideError::Byte => f.write_str("Byte"),
+                SideError::Wake => f.write_str("Wake"),
+                SideError::InvalidPins => f.write_str("InvalidPins"),
+                SideError::InvalidRoot => f.write_str("InvalidRoot"),
+                SideError::BadgeDirOpen => f.write_str("Badge/DirOpen"),
+                SideError::BadgeDirNotFound => f.write_str("Badge/DirNotFound"),
+                SideError::BadgeDirNotADir => f.write_str("Badge/DirNotADir"),
+                SideError::BadgeDirList => f.write_str("Badge/DirList"),
+                SideError::BadgeDirListReset => f.write_str("Badge/DirListReset"),
+                SideError::BadgeDirIter => f.write_str("Badge/DirIter"),
+                SideError::BadgeFileOpen => f.write_str("Badge/FileOpen"),
+                SideError::BadgeImageIo => f.write_str("Badge/ImageIo"),
+                SideError::BadgeImageType => f.write_str("Badge/ImageType"),
+                SideError::BadgeImageRead => f.write_str("Badge/ImageRead"),
+                SideError::BadgeImageParse => f.write_str("Badge/ImageParse"),
+                SideError::BackgroundDirOpen => f.write_str("Background/DirOpen"),
+                SideError::BackgroundDirNotFound => f.write_str("Background/DirNotFound"),
+                SideError::BackgroundDirNotADir => f.write_str("Background/DirNotADir"),
+                SideError::BackgroundDirList => f.write_str("Background/DirList"),
+                SideError::BackgroundDirListReset => f.write_str("Background/DirListReset"),
+                SideError::BackgroundDirIter => f.write_str("Background/DirIter"),
+                SideError::BackgroundFileOpen => f.write_str("Background/FileOpen"),
+                SideError::BackgroundImageIo => f.write_str("Background/ImageIo"),
+                SideError::BackgroundImageType => f.write_str("Background/ImageType"),
+                SideError::BackgroundImageRead => f.write_str("Background/ImageRead"),
+                SideError::BackgroundImageParse => f.write_str("Background/ImageParse"),
+            }
         }
     }
 
