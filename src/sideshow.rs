@@ -486,10 +486,14 @@ pub fn sideshow_error(e: SideError) -> ! {
 pub fn sideshow(r: impl Into<InkyRotation>) -> ! {
     let b = InkyBoard::get();
     let d = b.sd_card();
+    // Signal an issue if we crash due to the SDCard init failure.
+    b.leds().d.on();
+    b.leds().e.on();
     let v = d.root().unwrap_or_else(|_| sideshow_error(SideError::InvalidRoot));
     // Signal an issue if we crash after here.
+    b.leds().all_off();
     b.leds().a.on();
-    b.leds().e.on();
+    b.leds().b.on();
     SideShowInky::new(&b, &v, r)
         .and_then(|mut x| x.run())
         .unwrap_or_else(sideshow_error)
@@ -563,7 +567,9 @@ mod debug {
 
     #[inline(always)]
     pub(super) fn output(args: Arguments<'_>) {
-        let _ = DEBUG.port().write_fmt(args);
+        let v = DEBUG.port();
+        let _ = v.write_fmt(args);
+        let _ = v.write_char(b'\n' as char);
     }
 
     #[macro_export]

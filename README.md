@@ -167,6 +167,25 @@ number. _(A = 16, B = 8, C = 4, D = 2, E = 1)_.
 
 _Due to numbering, most Background related errors will have the "A" LED enabled._
 
+#### Critical Errors
+
+There are two odd "critical" type errors that will only happen during initialization.
+The code for them is [here](src/sideshow.rs#L490). __This error type does not use
+__the Activity or Network LEDs.__
+
+The two conditions are:
+
+- __A | B__: Stack overflow in critical section. This error is _super rare_. If
+   you receive this error, attempt to run Sideshow with the `static` or `static_large`
+   feature flags. If that still fails, please leave an [Issue](https://github.com/secfurry/inky-frame/issues/new?title=Stack+Overflow+Critical).
+- __D | E__: SDCard initilization error. This error occurs when the SDCard does
+   not respond properly to the `INIT (CMD0)` command and may indicate a bad SDCard
+   or one that does not support SPI. If you receive this error, try another SDCard
+   if avaliable. If you can't or the other one fails with the same error, please
+   leave an [Issue](https://github.com/secfurry/inky-frame/issues/new?title=SDCard+Init+Critical)
+   with information on the SDCard and it's manufactor, size and class markings
+   (eg: C with the number, U with the number, etc.).
+
 ## Configuration
 
 The configuration is fairly simple. Any changes made are in `sideshow.rs` in the
@@ -251,3 +270,27 @@ See the [InkyFrame](https://github.com/secfurry/inky-frame) repository for compa
 
 - Files named from MacOS are not correctly found by their name, even when correct.
   _Thanks to [@ticky](https://github.com/ticky) for the finding__
+
+### SDCard Bugs
+
+_Copied from the [inky-frame](https://github.com/secfurry/inky-frame) README._
+
+Some SDCards don't support SPI mode or don't initialize properly. I'm not
+100% sure if it's a protocol issue or something else. These cards return
+`READY (0)` when asked to go into `IDLE (1)` mode. They'll work fine on PCs.
+
+These SDCards work fine on some of my Ender 3 3D Printers, _which use Arduino's_
+_SDCard library_ and have the same initializing sequence. But other devices, like
+the Flipper Zero, don't work with them either.
+
+You'll know if it fails as it won't get past the initialization phase and basically
+"freezes" and does not respond with the "D" and "E" LEDs on. __This error type__
+__does not use the Activity or Network LEDs.__
+
+If you have a SDCard that has issues also, please leave me an leave an [Issue](https://github.com/secfurry/inky-frame/issues/new?title=SDCard+Init+Critical)
+with information on the SDCard and it's manufactor, size and class markings
+(eg: C with the number, U with the number, etc.) so I can test further.
+
+SDCards verified to __not__ work:
+
+- [These SDHC Class 10/U1 Cards](https://www.amazon.com/dp/B07XJVFVSJ)
