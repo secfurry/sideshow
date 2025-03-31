@@ -170,7 +170,7 @@ _Due to numbering, most Background related errors will have the "A" LED enabled.
 #### Critical Errors
 
 There are two odd "critical" type errors that will only happen during initialization.
-The code for them is [here](src/sideshow.rs#L490). __This error type does not use
+The code for them is [here](src/sideshow.rs#L490). __This error type does not use__
 __the Activity or Network LEDs.__
 
 The two conditions are:
