@@ -184,7 +184,8 @@ The two conditions are:
    if avaliable. If you can't or the other one fails with the same error, please
    leave an [Issue](https://github.com/secfurry/inky-frame/issues/new?title=SDCard+Init+Critical)
    with information on the SDCard and it's manufactor, size and class markings
-   (eg: C with the number, U with the number, etc.).
+   (eg: C with the number, U with the number, etc.). _This should be fixed now,_
+   _see the Bugs section below!_
 
 ## Configuration
 
@@ -272,6 +273,9 @@ See the [InkyFrame](https://github.com/secfurry/inky-frame) repository for compa
   _Thanks to [@ticky](https://github.com/ticky) for the finding__
 
 ### SDCard Bugs
+
+__This should be fixed with the inky-frame v0.3.0 update!__
+__Turns out some cheap vendors don't follow standard protocols, weeeeee!__
 
 _Copied from the [inky-frame](https://github.com/secfurry/inky-frame) README._
 

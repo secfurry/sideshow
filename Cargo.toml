@@ -26,7 +26,7 @@ edition             = "2024"
 # inky-frame          = { path = "./inky-frame", default-features = true, features = [ "static" ] }
 #
 rpsp                = { version = "0.2.0", default-features = false, features = [ "pico" ] }
-inky-frame          = { version = "0.2.2", default-features = true, features = [ "static" ] }
+inky-frame          = { version = "0.3.0", default-features = true, features = [ "static" ] }
 cortex-m-rt         = { version = "0.7.5", default-features = false }
 
 [features]

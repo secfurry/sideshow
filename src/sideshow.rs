@@ -458,20 +458,21 @@ pub fn sideshow_error(e: SideError) -> ! {
     // | Background/ImageRead    |           25 |   A B     E   |
     // | Background/ImageParse   |           26 |   A B   D     |
     //
+    out!("Error ({v}) received, stopping!");
     if v & 0x1 == 0x1 {
-        l.a.on();
+        l.e.on();
     }
     if v & 0x2 == 0x2 {
-        l.b.on();
+        l.d.on();
     }
     if v & 0x4 == 0x4 {
         l.c.on();
     }
     if v & 0x8 == 0x8 {
-        l.d.on();
+        l.b.on();
     }
     if v & 0x10 == 0x10 {
-        l.d.on();
+        l.a.on();
     }
     loop {
         i.sleep(1_500);
