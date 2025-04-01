@@ -270,7 +270,7 @@ See the [InkyFrame](https://github.com/secfurry/inky-frame) repository for compa
 ## Bugs
 
 - Files named from MacOS are not correctly found by their name, even when correct.
-  _Thanks to [@ticky](https://github.com/ticky) for the finding__
+  _Thanks to [@ticky](https://github.com/ticky) for the finding_
 
 ### SDCard Bugs
 
