@@ -267,6 +267,12 @@ If using an InkyFrame5, build with the "inky5" feature. This will also use the
 
 See the [InkyFrame](https://github.com/secfurry/inky-frame) repository for compatibility.
 
+## Stupid Notes
+
+If you have the device on battery (via JST) and it wakes up way too early or
+instantly. Unplug it from the battery and let it sit for a minute, sometimes
+the PCF gets wonky and needs a lil reset.
+
 ## Bugs
 
 - Files named from MacOS are not correctly found by their name, even when correct.
