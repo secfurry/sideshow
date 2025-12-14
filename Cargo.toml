@@ -30,8 +30,11 @@ cortex-m-rt         = { version = "0.7.5", default-features = false }
 
 [features]
 default             = []
-inky5               = [ "inky-frame/static_large" ]
 debug               = [ "rpsp/debug", "inky-frame/debug" ]
+inky4               = [ "inky-frame/static" ]
+inky5               = [ "inky-frame/static_large" ]
+static              = [ "inky-frame/static" ]
+static_large        = [ "inky-frame/static_large" ]
 
 [profile.dev]
 debug               = 2
@@ -55,6 +58,6 @@ debug-assertions    = false
 
 [package.metadata.docs.rs]
 target              = [ "thumbv6m-none-eabi" ]
-features            = [ "cyw", "debug", "pico" ]
+features            = [ "static", "debug" ]
 default-target      = "thumbv6m-none-eabi"
 no-default-features = false
