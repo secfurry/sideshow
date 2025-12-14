@@ -10,11 +10,14 @@
         "rust-analyzer.checkOnSave.allTargets": false,
         "editor.formatOnSave": true,
         "cSpell.words": [
+            "floorf",
             "gpio",
             "mkdirs",
             "pico",
             "ROSC",
+            "rposition",
             "rpsp",
+            "SDHC",
             "Uart",
             "XOSC",
             "XSOC"

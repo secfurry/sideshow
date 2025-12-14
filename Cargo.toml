@@ -5,7 +5,7 @@ authors             = [ "secfurry" ]
 edition             = "2024"
 license             = "MIT"
 publish             = true
-version             = "0.1.0"
+version             = "0.2.0"
 keywords            = [ "pico", "embedded", "pinorami", "inky_frame", "eink" ]
 categories          = [ "no-std", "embedded", "multimedia::images" ]
 repository          = "https://github.com/secfurry/sideshow"
@@ -18,15 +18,14 @@ path                = "src/main.rs"
 test                = false
 bench               = false
 doctest             = false
-edition             = "2024"
 
 [dependencies]
 ## Local Development Only
 # rpsp                = { path = "./rpsp", default-features = false, features = [ "pico" ] }
 # inky-frame          = { path = "./inky-frame", default-features = true, features = [ "static" ] }
 #
-rpsp                = { version = "0.2.0", default-features = false, features = [ "pico" ] }
-inky-frame          = { version = "0.4.0", default-features = true, features = [ "static" ] }
+rpsp                = { version = "0.3.0", default-features = false, features = [ "pico" ] }
+inky-frame          = { version = "0.5.0", default-features = true, features = [ "static" ] }
 cortex-m-rt         = { version = "0.7.5", default-features = false }
 
 [features]
@@ -56,6 +55,6 @@ debug-assertions    = false
 
 [package.metadata.docs.rs]
 target              = [ "thumbv6m-none-eabi" ]
-features            = [ "cyw", "debug" ]
+features            = [ "cyw", "debug", "pico" ]
 default-target      = "thumbv6m-none-eabi"
 no-default-features = false

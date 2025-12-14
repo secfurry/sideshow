@@ -20,6 +20,7 @@
 #![no_std]
 #![no_main]
 #![no_implicit_prelude]
+#![feature(likely_unlikely)]
 
 extern crate core;
 extern crate rpsp;
@@ -37,6 +38,6 @@ fn main() -> ! {
 }
 
 #[panic_handler]
-fn panic(_p: &core::panic::PanicInfo<'_>) -> ! {
-    loop {}
+fn panic(v: &core::panic::PanicInfo<'_>) -> ! {
+    sideshow::sideshow_panic(v)
 }

@@ -105,7 +105,6 @@ The table mapping of the LEDs to the errors is listed below.
 - __Badge/DirList__: Reading the Badge directory listing failed.
 - __Badge/DirListReset__: Resetting and re-reading the Badge directory listing failed.
 - __Badge/DirIter__: Walking through the Badge directory listing failed.
-- __Badge/FileOpen__: Opening the selected Badge file failed. (Before Parsing).
 - __Badge/ImageIo__: Reading the selected Badge file failed. (During Parsing, but
      not format related).
 - __Badge/ImageType__: The selected Badge image type was not a valid TGA file.
@@ -122,7 +121,6 @@ The table mapping of the LEDs to the errors is listed below.
 - __Background/DirListReset__: Resetting and re-reading the Background directory
      listing failed.
 - __Background/DirIter__: Walking through the Background directory listing failed.
-- __Background/FileOpen__: Opening the selected Background file failed. (Before Parsing).
 - __Background/ImageIo__: Reading the selected Background file failed. (During Parsing,
      but not format related).
 - __Background/ImageType__: The selected Background image type was not a valid TGA file.
@@ -130,6 +128,8 @@ The table mapping of the LEDs to the errors is listed below.
      Background file.
 - __Background/ImageParse__: The selected Background image could not be parsed due to
      improperly returned TGA data. (Corrupted or badly formatted file?).
+- __Panic__: Generic Rust panic occured. Run with the "debug" feature to determine the
+     source.
 
 #### Error Mapping Table
 
@@ -148,7 +148,6 @@ number. _(A = 16, B = 8, C = 4, D = 2, E = 1)_.
 | Badge/DirList           |            7 |       C D E   |
 | Badge/DirListReset      |            8 |     B         |
 | Badge/DirIter           |            9 |     B     E   |
-| Badge/FileOpen          |           10 |     B   D     |
 | Badge/ImageIo           |           11 |     B   D E   |
 | Badge/ImageType         |           12 |     B C       |
 | Badge/ImageRead         |           13 |     B C   E   |
@@ -159,18 +158,18 @@ number. _(A = 16, B = 8, C = 4, D = 2, E = 1)_.
 | Background/DirList      |           19 |   A     D E   |
 | Background/DirListReset |           20 |   A   C       |
 | Background/DirIter      |           21 |   A   C   E   |
-| Background/FileOpen     |           22 |   A   C D     |
 | Background/ImageIo      |           23 |   A   C D E   |
 | Background/ImageType    |           24 |   A B         |
 | Background/ImageRead    |           25 |   A B     E   |
 | Background/ImageParse   |           26 |   A B   D     |
+| Panic                   |           31 |   A B C D E   |
 
 _Due to numbering, most Background related errors will have the "A" LED enabled._
 
 #### Critical Errors
 
 There are two odd "critical" type errors that will only happen during initialization.
-The code for them is [here](src/sideshow.rs#L490). __This error type does not use__
+The code for them is [located here](src/sideshow.rs#L530). __This error type does not use__
 __the Activity or Network LEDs.__
 
 The two conditions are:
