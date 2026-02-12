@@ -1,6 +1,6 @@
 # SideShow
 
-eInk display Badge based on the Pinorami InkyFrame.
+eInk display Badge based on the Pimoroni InkyFrame.
 
 ## How does it work?
 
